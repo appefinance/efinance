@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EFinance</title>
+
+  <style>
+    :root {
+      --navy: #062b5f;
+      --navy-2: #041f45;
+      --green: #00b86b;
+      --green-2: #02995a;
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #102033;
+      --muted: #667085;
+      --border: #e4eaf1;
+      --danger: #dc2626;
+      --warning: #f59e0b;
+      --success: #16a34a;
+      --shadow: 0 18px 45px rgba(16, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .hidden { display: none !important; }
+
+    .auth-page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(0,184,107,0.16), transparent 35%),
+        linear-gradient(135deg, #ffffff 0%, #eef4fb 100%);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 430px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      padding: 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .brand-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--navy), var(--green));
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      font-size: 24px;
+      box-shadow: 0 14px 30px rgba(0, 184, 107, 0.25);
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      letter-spacing: -1px;
+      color: var(--navy);
+    }
+
+    .brand h1 span { color: var(--green); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .tabs-auth {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #f1f5f9;
+      padding: 5px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+
+    .tabs-auth button {
+      border: 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: transparent;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .tabs-auth button.active {
+      background: white;
+      color: var(--navy);
+      box-shadow: 0 8px 18px rgba(16, 32, 51, 0.08);
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 13px 0 6px;
+      color: var(--navy-2);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 14px;
+      outline: none;
+      background: white;
+      transition: 0.2s;
+    }
+
+    textarea { resize: vertical; min-height: 84px; }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(0, 184, 107, 0.12);
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 15px;
+      padding: 14px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green), var(--green-2));
+      color: white;
+      margin-top: 18px;
+      box-shadow: 0 14px 28px rgba(0, 184, 107, 0.22);
+    }
+
+    .btn-primary:hover { transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: #eef4fb;
+      color: var(--navy);
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--navy-2);
+      color: white;
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .sidebar .brand h1 { color: white; }
+    .sidebar .brand h1 span { color: var(--green); }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 26px;
+    }
+
+    .nav button {
+      border: 0;
+      background: transparent;
+      color: rgba(255,255,255,0.72);
+      padding: 13px 14px;
+      border-radius: 14px;
+      text-align: left;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      background: rgba(255,255,255,0.10);
+      color: white;
+    }
+
+    .main {
+      padding: 28px;
+      overflow: auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .topbar h2 {
+      color: var(--navy);
+      font-size: 26px;
+      letter-spacing: -0.5px;
+    }
+
+    .topbar p {
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(16, 32, 51, 0.04);
+    }
+
+    .metric-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      margin-top: 10px;
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--navy);
+      letter-spacing: -0.5px;
+    }
+
+    .metric-value.green { color: var(--success); }
+    .metric-value.red { color: var(--danger); }
+    .metric-value.orange { color: var(--warning); }
+
+    .section-title {
+      font-size: 18px;
+      color: var(--navy);
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 13px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .badge.green { background: #dcfce7; color: #166534; }
+    .badge.red { background: #fee2e2; color: #991b1b; }
+    .badge.orange { background: #fef3c7; color: #92400e; }
+    .badge.blue { background: #dbeafe; color: #1e40af; }
+    .badge.gray { background: #f1f5f9; color: #475569; }
+
+    .message {
+      margin-top: 14px;
+      font-size: 14px;
+      padding: 12px;
+      border-radius: 14px;
+      display: none;
+    }
+
+    .message.ok {
+      background: #dcfce7;
+      color: #166534;
+      display: block;
+    }
+
+    .message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 18px 0;
+      font-size: 14px;
+    }
+
+    .mobile-menu {
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: relative;
+        height: auto;
+        padding: 18px;
+      }
+      .nav {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .nav button { text-align: center; font-size: 13px; }
+      .main { padding: 18px; }
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      table { min-width: 680px; }
+      .table-wrap { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <section id="authPage" class="auth-page">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="brand-icon">E</div>
+        <h1><span>E</span>Finance</h1>
+      </div>
+      <p class="subtitle">Controlo financeiro inteligente para receitas, despesas, dívidas, valores a receber e alertas de gastos.</p>
+
+      <div class="tabs-auth">
+        <button id="loginTab" class="active" type="button">Entrar</button>
+        <button id="signupTab" type="button">Criar conta</button>
+      </div>
+
+      <form id="loginForm">
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="seu@email.com" required />
+        <label>Senha</label>
+        <input id="loginPassword" type="password" placeholder="A sua senha" required />
+        <button class="btn btn-primary" type="submit">Entrar no EFinance</button>
+      </form>
+
+      <form id="signupForm" class="hidden">
+        <label>Nome completo</label>
+        <input id="signupName" type="text" placeholder="Seu nome" required />
+        <label>Email</label>
+        <input id="signupEmail" type="email" placeholder="seu@email.com" required />
+        <label>Senha</label>
+        <input id="signupPassword" type="password" placeholder="Mínimo 6 caracteres" required />
+        <button class="btn btn-primary" type="submit">Criar conta</button>
+      </form>
+
+      <div id="authMessage" class="message"></div>
+    </div>
+  </section>
+
+  <section id="appPage" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">E</div>
+        <h1><span>E</span>Finance</h1>
+      </div>
+
+      <div class="nav">
+        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+        <button class="nav-btn" data-page="expenses">Despesas</button>
+        <button class="nav-btn" data-page="incomes">Receitas</button>
+        <button class="nav-btn" data-page="debts">Dívidas</button>
+        <button class="nav-btn" data-page="reports">Relatórios</button>
+        <button class="nav-btn" data-page="settings">Definições</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="workspaceInfo">A carregar workspace...</p>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary" style="width:auto;">Sair</button>
+      </div>
+
+      <div id="globalMessage" class="message"></div>
+
+      <section id="dashboardPage" class="page">
+        <div class="grid grid-4">
+          <div class="card">
+            <div class="metric-title">Saldo disponível</div>
+            <div id="balanceValue" class="metric-value">0,00 MT</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Entradas</div>
+            <div id="totalInValue" class="metric-value green">0,00 MT</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Saídas</div>
+            <div id="totalOutValue" class="metric-value red">0,00 MT</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Dívidas pendentes</div>
+            <div id="pendingDebtsValue" class="metric-value orange">0,00 MT</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:18px;">
+          <div class="card">
+            <h3 class="section-title">Últimos movimentos</h3>
+            <div id="movementsList" class="table-wrap"></div>
+          </div>
+          <div class="card">
+            <h3 class="section-title">Alertas inteligentes iniciais</h3>
+            <div id="alertsBox" class="empty">Os alertas serão gerados com base nos seus gastos, dívidas e limites.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="expensesPage" class="page hidden">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="section-title">Adicionar despesa</h3>
+            <form id="expenseForm">
+              <div class="form-row">
+                <div>
+                  <label>Valor</label>
+                  <input id="expenseAmount" type="number" step="0.01" min="0" required />
+                </div>
+                <div>
+                  <label>Data</label>
+                  <input id="expenseDate" type="date" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div>
+                  <label>Categoria</label>
+                  <select id="expenseCategory"></select>
+                </div>
+                <div>
+                  <label>Forma de pagamento</label>
+                  <select id="expensePaymentMethod"></select>
+                </div>
+              </div>
+              <label>Nível de necessidade</label>
+              <select id="expenseNecessity">
+                <option value="essential">Essencial</option>
+                <option value="important" selected>Importante</option>
+                <option value="avoidable">Evitável</option>
+                <option value="impulsive">Impulsivo</option>
+                <option value="emergency">Emergência</option>
+              </select>
+              <label>Descrição</label>
+              <textarea id="expenseDescription" placeholder="Ex: Combustível, almoço, compra, pagamento..."></textarea>
+              <button class="btn btn-primary" type="submit">Guardar despesa</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Despesas recentes</h3>
+            <div id="expensesList" class="table-wrap"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="incomesPage" class="page hidden">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="section-title">Adicionar receita</h3>
+            <form id="incomeForm">
+              <div class="form-row">
+                <div>
+                  <label>Valor</label>
+                  <input id="incomeAmount" type="number" step="0.01" min="0" required />
+                </div>
+                <div>
+                  <label>Data</label>
+                  <input id="incomeDate" type="date" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div>
+                  <label>Fonte</label>
+                  <input id="incomeSource" type="text" placeholder="Ex: cliente, salário, venda" />
+                </div>
+                <div>
+                  <label>Forma de recebimento</label>
+                  <select id="incomePaymentMethod"></select>
+                </div>
+              </div>
+              <label>Descrição</label>
+              <textarea id="incomeDescription" placeholder="Detalhe da receita"></textarea>
+              <button class="btn btn-primary" type="submit">Guardar receita</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Receitas recentes</h3>
+            <div id="incomesList" class="table-wrap"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="debtsPage" class="page hidden">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="section-title">Nova dívida / valor a receber</h3>
+            <form id="debtForm">
+              <label>Tipo</label>
+              <select id="debtType">
+                <option value="payable">Dívida a pagar</option>
+                <option value="receivable">Valor a receber</option>
+              </select>
+              <div class="form-row">
+                <div>
+                  <label>Pessoa / empresa</label>
+                  <input id="debtPerson" type="text" required />
+                </div>
+                <div>
+                  <label>Valor total</label>
+                  <input id="debtAmount" type="number" step="0.01" min="0" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div>
+                  <label>Vencimento</label>
+                  <input id="debtDueDate" type="date" />
+                </div>
+                <div>
+                  <label>Afeta saldo ao pagar/receber?</label>
+                  <select id="debtAffectsBalance">
+                    <option value="true" selected>Sim</option>
+                    <option value="false">Não</option>
+                  </select>
+                </div>
+              </div>
+              <label>Descrição</label>
+              <textarea id="debtDescription" placeholder="Detalhes da dívida ou valor a receber"></textarea>
+              <button class="btn btn-primary" type="submit">Guardar registo</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Registar pagamento / recebimento</h3>
+            <form id="debtPaymentForm">
+              <label>Dívida / valor a receber</label>
+              <select id="debtPaymentDebt"></select>
+              <div class="form-row">
+                <div>
+                  <label>Valor pago/recebido</label>
+                  <input id="debtPaymentAmount" type="number" step="0.01" min="0" required />
+                </div>
+                <div>
+                  <label>Data</label>
+                  <input id="debtPaymentDate" type="date" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div>
+                  <label>Forma de pagamento</label>
+                  <select id="debtPaymentMethod"></select>
+                </div>
+                <div>
+                  <label>Afeta saldo?</label>
+                  <select id="paymentAffectsBalance">
+                    <option value="true" selected>Sim</option>
+                    <option value="false">Não</option>
+                  </select>
+                </div>
+              </div>
+              <label>Notas</label>
+              <textarea id="debtPaymentNotes"></textarea>
+              <button class="btn btn-primary" type="submit">Registar movimento</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+          <h3 class="section-title">Dívidas e valores a receber</h3>
+          <div id="debtsList" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="reportsPage" class="page hidden">
+        <div class="card">
+          <h3 class="section-title">Relatórios</h3>
+          <p class="empty">Nesta primeira versão, os relatórios usam os movimentos financeiros. A seguir vamos adicionar filtros por mês, PDF e Excel.</p>
+        </div>
+      </section>
+
+      <section id="settingsPage" class="page hidden">
+        <div class="card">
+          <h3 class="section-title">Definições</h3>
+          <p class="empty">Aqui vamos colocar orçamento mensal, categorias, métodos de pagamento, moeda, perfil e preferências.</p>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://lkjrjaqocuptvnpyljtl.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_3EVDz-bELBnkeHRX0JfMVw_romKssFu';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let currentWorkspace = null;
+    let categories = [];
+    let paymentMethods = [];
+    let debts = [];
+
+    const $ = (id) => document.getElementById(id);
+
+    const formatMoney = (value, currency = 'MZN') => {
+      const number = Number(value || 0);
+      return new Intl.NumberFormat('pt-MZ', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(number) + ' ' + (currency === 'MZN' ? 'MT' : currency);
+    };
+
+    const today = () => new Date().toISOString().split('T')[0];
+
+    const showMessage = (elementId, text, type = 'ok') => {
+      const el = $(elementId);
+      el.className = `message ${type}`;
+      el.textContent = text;
+      setTimeout(() => {
+        el.className = 'message';
+        el.textContent = '';
+      }, 4500);
+    };
+
+    const setAuthMode = (mode) => {
+      const login = mode === 'login';
+      $('loginForm').classList.toggle('hidden', !login);
+      $('signupForm').classList.toggle('hidden', login);
+      $('loginTab').classList.toggle('active', login);
+      $('signupTab').classList.toggle('active', !login);
+    };
+
+    const showApp = () => {
+      $('authPage').classList.add('hidden');
+      $('appPage').classList.remove('hidden');
+    };
+
+    const showAuth = () => {
+      $('appPage').classList.add('hidden');
+      $('authPage').classList.remove('hidden');
+    };
+
+    const switchPage = (page) => {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      $(`${page}Page`).classList.remove('hidden');
+      document.querySelector(`[data-page="${page}"]`).classList.add('active');
+
+      const titles = {
+        dashboard: 'Dashboard',
+        expenses: 'Despesas',
+        incomes: 'Receitas',
+        debts: 'Dívidas',
+        reports: 'Relatórios',
+        settings: 'Definições'
+      };
+      $('pageTitle').textContent = titles[page] || 'EFinance';
+    };
+
+    const loadWorkspace = async () => {
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', currentUser.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error('Nenhum workspace encontrado. Confirme se o trigger de criação automática funcionou.');
+      }
+
+      currentWorkspace = data;
+      $('workspaceInfo').textContent = `${data.name} · Moeda: ${data.currency}`;
+    };
+
+    const loadCategories = async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('status', 'active')
+        .order('name');
+      if (error) throw error;
+      categories = data || [];
+
+      const expenseOptions = categories
+        .filter(c => c.type === 'expense')
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+
+      $('expenseCategory').innerHTML = expenseOptions || '<option value="">Sem categorias</option>';
+    };
+
+    const loadPaymentMethods = async () => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('status', 'active')
+        .order('name');
+      if (error) throw error;
+      paymentMethods = data || [];
+
+      const options = paymentMethods.map(pm => `<option value="${pm.id}">${pm.name}</option>`).join('');
+      $('expensePaymentMethod').innerHTML = options;
+      $('incomePaymentMethod').innerHTML = options;
+      $('debtPaymentMethod').innerHTML = options;
+    };
+
+    const loadBalance = async () => {
+      const { data, error } = await supabase
+        .from('v_workspace_balance')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      $('balanceValue').textContent = formatMoney(data?.balance || 0, currentWorkspace.currency);
+      $('totalInValue').textContent = formatMoney(data?.total_in || 0, currentWorkspace.currency);
+      $('totalOutValue').textContent = formatMoney(data?.total_out || 0, currentWorkspace.currency);
+    };
+
+    const loadPendingDebts = async () => {
+      const { data, error } = await supabase
+        .from('debts')
+        .select('pending_amount')
+        .eq('workspace_id', currentWorkspace.id)
+        .in('status', ['pending', 'partial', 'overdue']);
+      if (error) throw error;
+      const total = (data || []).reduce((sum, item) => sum + Number(item.pending_amount || 0), 0);
+      $('pendingDebtsValue').textContent = formatMoney(total, currentWorkspace.currency);
+    };
+
+    const loadMovements = async () => {
+      const { data, error } = await supabase
+        .from('financial_movements')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        $('movementsList').innerHTML = '<div class="empty">Ainda não existem movimentos.</div>';
+        return;
+      }
+
+      $('movementsList').innerHTML = `
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
+          <tbody>
+            ${data.map(m => `
+              <tr>
+                <td>${m.movement_date || ''}</td>
+                <td><span class="badge ${m.direction === 'in' ? 'green' : 'red'}">${m.direction === 'in' ? 'Entrada' : 'Saída'}</span></td>
+                <td>${m.description || '-'}</td>
+                <td>${formatMoney(m.amount, m.currency)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const loadExpenses = async () => {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*, categories(name), payment_methods(name)')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        $('expensesList').innerHTML = '<div class="empty">Nenhuma despesa registada.</div>';
+        return;
+      }
+
+      $('expensesList').innerHTML = `
+        <table>
+          <thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Valor</th></tr></thead>
+          <tbody>
+            ${data.map(e => `
+              <tr>
+                <td>${e.expense_date}</td>
+                <td>${e.categories?.name || '-'}</td>
+                <td>${e.description || '-'}</td>
+                <td>${formatMoney(e.amount, e.currency)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const loadIncomes = async () => {
+      const { data, error } = await supabase
+        .from('incomes')
+        .select('*, payment_methods(name)')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        $('incomesList').innerHTML = '<div class="empty">Nenhuma receita registada.</div>';
+        return;
+      }
+
+      $('incomesList').innerHTML = `
+        <table>
+          <thead><tr><th>Data</th><th>Fonte</th><th>Descrição</th><th>Valor</th></tr></thead>
+          <tbody>
+            ${data.map(i => `
+              <tr>
+                <td>${i.income_date}</td>
+                <td>${i.source || '-'}</td>
+                <td>${i.description || '-'}</td>
+                <td>${formatMoney(i.amount, i.currency)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const loadDebts = async () => {
+      const { data, error } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      debts = data || [];
+
+      const pending = debts.filter(d => ['pending', 'partial', 'overdue'].includes(d.status));
+      $('debtPaymentDebt').innerHTML = pending.map(d => {
+        const label = d.type === 'payable' ? 'Pagar' : 'Receber';
+        return `<option value="${d.id}">${label}: ${d.person_name} · Pendente ${formatMoney(d.pending_amount, d.currency)}</option>`;
+      }).join('') || '<option value="">Sem dívidas pendentes</option>';
+
+      if (!debts.length) {
+        $('debtsList').innerHTML = '<div class="empty">Nenhuma dívida ou valor a receber registado.</div>';
+        return;
+      }
+
+      $('debtsList').innerHTML = `
+        <table>
+          <thead><tr><th>Tipo</th><th>Pessoa/Empresa</th><th>Total</th><th>Pago/Recebido</th><th>Pendente</th><th>Estado</th></tr></thead>
+          <tbody>
+            ${debts.map(d => `
+              <tr>
+                <td><span class="badge ${d.type === 'payable' ? 'red' : 'green'}">${d.type === 'payable' ? 'A pagar' : 'A receber'}</span></td>
+                <td>${d.person_name}</td>
+                <td>${formatMoney(d.total_amount, d.currency)}</td>
+                <td>${formatMoney(d.paid_amount, d.currency)}</td>
+                <td>${formatMoney(d.pending_amount, d.currency)}</td>
+                <td><span class="badge ${statusClass(d.status)}">${statusLabel(d.status)}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const statusClass = (status) => {
+      if (status === 'paid') return 'green';
+      if (status === 'partial') return 'blue';
+      if (status === 'overdue') return 'red';
+      if (status === 'cancelled') return 'gray';
+      return 'orange';
+    };
+
+    const statusLabel = (status) => {
+      const labels = {
+        pending: 'Pendente',
+        partial: 'Parcial',
+        paid: 'Pago',
+        overdue: 'Vencido',
+        cancelled: 'Cancelado'
+      };
+      return labels[status] || status;
+    };
+
+    const refreshAll = async () => {
+      await loadBalance();
+      await loadPendingDebts();
+      await loadMovements();
+      await loadExpenses();
+      await loadIncomes();
+      await loadDebts();
+    };
+
+    const bootApp = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        showAuth();
+        return;
+      }
+
+      currentUser = session.user;
+      showApp();
+
+      try {
+        await loadWorkspace();
+        await loadCategories();
+        await loadPaymentMethods();
+        await refreshAll();
+      } catch (error) {
+        console.error(error);
+        showMessage('globalMessage', error.message, 'error');
+      }
+    };
+
+    $('loginTab').addEventListener('click', () => setAuthMode('login'));
+    $('signupTab').addEventListener('click', () => setAuthMode('signup'));
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchPage(btn.dataset.page));
+    });
+
+    $('loginForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = $('loginEmail').value.trim();
+      const password = $('loginPassword').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        showMessage('authMessage', error.message, 'error');
+        return;
+      }
+
+      currentUser = data.user;
+      await bootApp();
+    });
+
+    $('signupForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const fullName = $('signupName').value.trim();
+      const email = $('signupEmail').value.trim();
+      const password = $('signupPassword').value;
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } }
+      });
+
+      if (error) {
+        showMessage('authMessage', error.message, 'error');
+        return;
+      }
+
+      if (data.session) {
+        currentUser = data.user;
+        await bootApp();
+      } else {
+        showMessage('authMessage', 'Conta criada. Confirme o email antes de entrar.', 'ok');
+        setAuthMode('login');
+      }
+    });
+
+    $('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      currentUser = null;
+      currentWorkspace = null;
+      showAuth();
+    });
+
+    $('expenseForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = {
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        category_id: $('expenseCategory').value || null,
+        payment_method_id: $('expensePaymentMethod').value || null,
+        amount: Number($('expenseAmount').value || 0),
+        currency: currentWorkspace.currency,
+        expense_date: $('expenseDate').value,
+        necessity_level: $('expenseNecessity').value,
+        description: $('expenseDescription').value.trim(),
+        affects_balance: true,
+        status: 'confirmed'
+      };
+
+      const { error } = await supabase.from('expenses').insert(payload);
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      $('expenseForm').reset();
+      $('expenseDate').value = today();
+      showMessage('globalMessage', 'Despesa guardada com sucesso.', 'ok');
+      await refreshAll();
+    });
+
+    $('incomeForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = {
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        payment_method_id: $('incomePaymentMethod').value || null,
+        amount: Number($('incomeAmount').value || 0),
+        currency: currentWorkspace.currency,
+        income_date: $('incomeDate').value,
+        source: $('incomeSource').value.trim(),
+        description: $('incomeDescription').value.trim(),
+        affects_balance: true,
+        status: 'confirmed'
+      };
+
+      const { error } = await supabase.from('incomes').insert(payload);
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      $('incomeForm').reset();
+      $('incomeDate').value = today();
+      showMessage('globalMessage', 'Receita guardada com sucesso.', 'ok');
+      await refreshAll();
+    });
+
+    $('debtForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const amount = Number($('debtAmount').value || 0);
+      const payload = {
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        type: $('debtType').value,
+        person_name: $('debtPerson').value.trim(),
+        total_amount: amount,
+        paid_amount: 0,
+        pending_amount: amount,
+        currency: currentWorkspace.currency,
+        due_date: $('debtDueDate').value || null,
+        description: $('debtDescription').value.trim(),
+        affects_balance: $('debtAffectsBalance').value === 'true',
+        status: 'pending'
+      };
+
+      const { error } = await supabase.from('debts').insert(payload);
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      $('debtForm').reset();
+      showMessage('globalMessage', 'Dívida/valor a receber guardado com sucesso.', 'ok');
+      await refreshAll();
+    });
+
+    $('debtPaymentForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const debtId = $('debtPaymentDebt').value;
+      if (!debtId) {
+        showMessage('globalMessage', 'Não há dívida selecionada.', 'error');
+        return;
+      }
+
+      const payload = {
+        debt_id: debtId,
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        amount: Number($('debtPaymentAmount').value || 0),
+        payment_date: $('debtPaymentDate').value,
+        payment_method_id: $('debtPaymentMethod').value || null,
+        affects_balance: $('paymentAffectsBalance').value === 'true',
+        notes: $('debtPaymentNotes').value.trim()
+      };
+
+      const { error } = await supabase.from('debt_payments').insert(payload);
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      $('debtPaymentForm').reset();
+      $('debtPaymentDate').value = today();
+      showMessage('globalMessage', 'Pagamento/recebimento registado com sucesso.', 'ok');
+      await refreshAll();
+    });
+
+    $('expenseDate').value = today();
+    $('incomeDate').value = today();
+    $('debtPaymentDate').value = today();
+
+    bootApp();
+  </script>
+</body>
+</html>
