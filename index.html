@@ -631,12 +631,68 @@
 
     .chart-card canvas {
       width: 100%;
-      min-height: 260px;
+      min-height: 360px;
       border: 1px solid var(--border);
       border-radius: 18px;
-      background: #ffffff;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
       padding: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
     }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .insight-card {
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .insight-card strong {
+      display: block;
+      color: var(--navy);
+      font-size: 18px;
+      margin-top: 4px;
+    }
+
+    .recommendation-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .recommendation-item {
+      border-left: 4px solid var(--green);
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 12px 13px;
+      color: var(--text);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .recommendation-item.warning { border-left-color: var(--warning); }
+    .recommendation-item.danger { border-left-color: var(--danger); }
+    .recommendation-item.info { border-left-color: var(--blue); }
+
+    .alert-block {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 13px;
+      margin-bottom: 10px;
+      background: #ffffff;
+    }
+
+    .alert-block.red { background: #fff7f7; border-color: #fecaca; }
+    .alert-block.orange { background: #fffbeb; border-color: #fde68a; }
+    .alert-block.blue { background: #eff6ff; border-color: #bfdbfe; }
+    .alert-block.green { background: #f0fdf4; border-color: #bbf7d0; }
+    .alert-block.purple { background: #f5f3ff; border-color: #ddd6fe; }
 
     .report-actions {
       display: flex;
@@ -1384,7 +1440,7 @@
 
             <div class="card">
               <h3 class="section-title">Análise inteligente</h3>
-              <p id="smartSummary" class="hint mt-2">Sem dados suficientes.</p>
+              <div id="smartSummary" class="hint mt-2">Sem dados suficientes.</div>
               <div id="reportAlerts" class="mt-2"></div>
             </div>
           </div>
@@ -2540,6 +2596,173 @@
       `;
     };
 
+
+    const getCoreFinancialAnalysis = () => {
+      const totalIn = Number(lastBalance.total_in || 0);
+      const totalOut = Number(lastBalance.total_out || 0);
+      const balance = Number(lastBalance.balance || 0);
+      const savingsRate = totalIn > 0 ? ((balance / totalIn) * 100) : 0;
+      const spendingRate = totalIn > 0 ? ((totalOut / totalIn) * 100) : 0;
+
+      const byCategory = {};
+      expenses.forEach((expense) => {
+        const name = expense.categories?.name || 'Sem categoria';
+        byCategory[name] = (byCategory[name] || 0) + Number(expense.amount || 0);
+      });
+      const categoryEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+      const topCategory = categoryEntries[0] || ['-', 0];
+      const topCategoryPercent = totalOut > 0 ? (topCategory[1] / totalOut) * 100 : 0;
+
+      const avoidableTotal = expenses
+        .filter((expense) => ['avoidable', 'impulsive'].includes(expense.necessity_level))
+        .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+      const essentialTotal = expenses
+        .filter((expense) => ['essential', 'emergency'].includes(expense.necessity_level))
+        .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+      const importantTotal = expenses
+        .filter((expense) => expense.necessity_level === 'important')
+        .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+      const payableTotal = debts
+        .filter((debt) => debt.type === 'payable' && ['pending', 'partial', 'overdue'].includes(debt.status))
+        .reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+
+      const receivableTotal = debts
+        .filter((debt) => debt.type === 'receivable' && ['pending', 'partial', 'overdue'].includes(debt.status))
+        .reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+
+      const overdueTotal = debts
+        .filter((debt) => debt.status === 'overdue')
+        .reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+
+      const totalBudget = budgets.reduce((sum, budget) => sum + Number(budget.monthly_limit || 0), 0);
+      const budgetUsedPercent = totalBudget > 0 ? (totalOut / totalBudget) * 100 : 0;
+
+      const byPayment = {};
+      movements.forEach((movement) => {
+        const name = movement.payment_method_id
+          ? (paymentMethods.find((method) => method.id === movement.payment_method_id)?.name || 'Forma não identificada')
+          : 'Sem forma definida';
+
+        if (!byPayment[name]) byPayment[name] = { in: 0, out: 0, balance: 0 };
+        if (movement.direction === 'in') {
+          byPayment[name].in += Number(movement.amount || 0);
+          byPayment[name].balance += Number(movement.amount || 0);
+        } else {
+          byPayment[name].out += Number(movement.amount || 0);
+          byPayment[name].balance -= Number(movement.amount || 0);
+        }
+      });
+
+      const paymentEntries = Object.entries(byPayment).sort((a, b) => Math.abs(b[1].balance) - Math.abs(a[1].balance));
+      const negativePayment = paymentEntries.find(([, value]) => value.balance < 0);
+
+      return {
+        totalIn,
+        totalOut,
+        balance,
+        savingsRate,
+        spendingRate,
+        byCategory,
+        categoryEntries,
+        topCategory,
+        topCategoryPercent,
+        avoidableTotal,
+        essentialTotal,
+        importantTotal,
+        payableTotal,
+        receivableTotal,
+        overdueTotal,
+        totalBudget,
+        budgetUsedPercent,
+        paymentEntries,
+        negativePayment
+      };
+    };
+
+    const buildFinancialRecommendations = (analysis) => {
+      const recommendations = [];
+      const currency = currentWorkspace?.currency || 'MZN';
+
+      if (analysis.totalIn <= 0 && analysis.totalOut > 0) {
+        recommendations.push({ level: 'danger', text: 'Registe as suas entradas. Sem receitas registadas, o app não consegue medir corretamente a saúde financeira do período.' });
+      }
+
+      if (analysis.balance < 0) {
+        recommendations.push({ level: 'danger', text: `O saldo está negativo em ${formatMoney(Math.abs(analysis.balance), currency)}. Prioridade: travar despesas não essenciais e identificar uma entrada imediata para cobrir o défice.` });
+      }
+
+      if (analysis.totalIn > 0 && analysis.spendingRate >= 90) {
+        recommendations.push({ level: 'danger', text: `As saídas consumiram ${analysis.spendingRate.toFixed(0)}% das entradas. Recomendo limitar novos gastos a despesas essenciais até o saldo recuperar.` });
+      } else if (analysis.totalIn > 0 && analysis.spendingRate >= 70) {
+        recommendations.push({ level: 'warning', text: `As saídas já consumiram ${analysis.spendingRate.toFixed(0)}% das entradas. Defina um teto semanal para alimentação fora, combustível e extras.` });
+      } else if (analysis.totalIn > 0 && analysis.spendingRate <= 50) {
+        recommendations.push({ level: 'info', text: `Bom controlo: as saídas estão em ${analysis.spendingRate.toFixed(0)}% das entradas. Pode direcionar parte do saldo para uma meta ou fundo de emergência.` });
+      }
+
+      if (analysis.avoidableTotal > 0) {
+        const avoidPercent = analysis.totalOut > 0 ? (analysis.avoidableTotal / analysis.totalOut) * 100 : 0;
+        recommendations.push({ level: avoidPercent >= 20 ? 'warning' : 'info', text: `Há ${formatMoney(analysis.avoidableTotal, currency)} em gastos evitáveis/impulsivos (${avoidPercent.toFixed(0)}% das saídas). Meta recomendada: reduzir pelo menos 30% deste valor no próximo período.` });
+      }
+
+      if (analysis.topCategory[0] !== '-' && analysis.topCategoryPercent >= 35) {
+        recommendations.push({ level: 'warning', text: `A categoria “${analysis.topCategory[0]}” concentra ${analysis.topCategoryPercent.toFixed(0)}% das saídas. Reveja os maiores lançamentos desta categoria e defina limite mensal específico.` });
+      }
+
+      if (analysis.payableTotal > 0) {
+        recommendations.push({ level: 'info', text: `Tem ${formatMoney(analysis.payableTotal, currency)} em dívidas a pagar. Priorize as vencidas e as de maior impacto no caixa.` });
+      }
+
+      if (analysis.receivableTotal > 0) {
+        recommendations.push({ level: 'info', text: `Tem ${formatMoney(analysis.receivableTotal, currency)} a receber. Faça cobrança/seguimento destes valores antes de contrair novas despesas.` });
+      }
+
+      if (analysis.overdueTotal > 0) {
+        recommendations.push({ level: 'danger', text: `Há ${formatMoney(analysis.overdueTotal, currency)} vencidos. Resolva ou renegocie estes valores para evitar acumulação e perda de controlo.` });
+      }
+
+      if (analysis.totalBudget > 0 && analysis.budgetUsedPercent >= 80) {
+        recommendations.push({ level: 'warning', text: `O orçamento está em ${analysis.budgetUsedPercent.toFixed(0)}% de uso. Até fechar o mês, só aprove despesas essenciais ou previamente planeadas.` });
+      }
+
+      if (analysis.negativePayment) {
+        recommendations.push({ level: 'warning', text: `A forma de pagamento “${analysis.negativePayment[0]}” está negativa em ${formatMoney(Math.abs(analysis.negativePayment[1].balance), currency)}. Verifique se faltou registar alguma entrada nessa conta/carteira.` });
+      }
+
+      if (!recommendations.length) {
+        recommendations.push({ level: 'info', text: 'Sem alertas críticos. Continue registando todos os movimentos para melhorar a precisão das recomendações.' });
+      }
+
+      return recommendations;
+    };
+
+    const renderSmartFinancialAnalysis = () => {
+      const analysis = getCoreFinancialAnalysis();
+      const recommendations = buildFinancialRecommendations(analysis);
+      const currency = currentWorkspace?.currency || 'MZN';
+
+      const cards = `
+        <div class="insight-grid">
+          <div class="insight-card"><span class="hint">Saúde do período</span><strong>${analysis.balance < 0 ? 'Crítica' : analysis.spendingRate > 80 ? 'Atenção' : 'Controlada'}</strong></div>
+          <div class="insight-card"><span class="hint">Taxa de gasto</span><strong>${analysis.totalIn > 0 ? analysis.spendingRate.toFixed(0) + '%' : 'Sem receita'}</strong></div>
+          <div class="insight-card"><span class="hint">Maior pressão</span><strong>${analysis.topCategory[0]}</strong></div>
+          <div class="insight-card"><span class="hint">Potencial a recuperar</span><strong>${formatMoney(analysis.receivableTotal + analysis.avoidableTotal, currency)}</strong></div>
+        </div>
+      `;
+
+      const recHtml = `
+        <div class="recommendation-list">
+          ${recommendations.map((item) => `<div class="recommendation-item ${item.level}">${item.text}</div>`).join('')}
+        </div>
+      `;
+
+      if ($('smartSummary')) {
+        $('smartSummary').innerHTML = cards + recHtml;
+      }
+    };
+
     const renderReports = () => {
       const avoidableTotal = expenses
         .filter((expense) => ['avoidable', 'impulsive'].includes(expense.necessity_level))
@@ -2612,101 +2835,78 @@
         renderReportPaymentSummary();
       }
 
-      if (lastBalance.balance < 0) {
-        $('smartSummary').textContent = 'O saldo está negativo. Reduza saídas ou registe entradas pendentes.';
-      } else if (avoidableTotal > 0) {
-        $('smartSummary').textContent = `Há ${formatMoney(avoidableTotal, currentWorkspace.currency)} em despesas evitáveis/impulsivas.`;
-      } else if (lastBalance.total_in > 0 && lastBalance.total_out / lastBalance.total_in < 0.5) {
-        $('smartSummary').textContent = 'Bom ritmo: as saídas estão abaixo de 50% das entradas no período.';
-      } else {
-        $('smartSummary').textContent = 'Situação normal até agora.';
-      }
+      renderSmartFinancialAnalysis();
     };
 
     const renderAlerts = () => {
+      const analysis = getCoreFinancialAnalysis();
+      const recommendations = buildFinancialRecommendations(analysis);
       const alerts = [];
-      const totalOut = Number(lastBalance.total_out || 0);
-      const totalIn = Number(lastBalance.total_in || 0);
+      const currency = currentWorkspace?.currency || 'MZN';
 
-      if ($('reportPaymentSummary')) {
-        renderReportPaymentSummary();
+      if (analysis.balance < 0) {
+        alerts.push({ color: 'red', title: 'Saldo negativo', text: `Saldo atual negativo em ${formatMoney(Math.abs(analysis.balance), currency)}.` });
       }
 
-      if (lastBalance.balance < 0) {
-        alerts.push({
-          color: 'red',
-          title: 'Saldo negativo',
-          text: 'As saídas ultrapassaram as entradas.'
-        });
+      if (analysis.totalIn <= 0 && analysis.totalOut > 0) {
+        alerts.push({ color: 'red', title: 'Sem entradas registadas', text: 'Há saídas, mas nenhuma entrada registada no período.' });
       }
 
-      const avoidableTotal = expenses
-        .filter((expense) => ['avoidable', 'impulsive'].includes(expense.necessity_level))
-        .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-
-      if (avoidableTotal > 0) {
-        alerts.push({
-          color: 'orange',
-          title: 'Gastos evitáveis',
-          text: `Despesas evitáveis/impulsivas somam ${formatMoney(avoidableTotal, currentWorkspace.currency)}.`
-        });
+      if (analysis.totalIn > 0 && analysis.spendingRate >= 90) {
+        alerts.push({ color: 'red', title: 'Gasto muito elevado', text: `As saídas consumiram ${analysis.spendingRate.toFixed(0)}% das entradas.` });
+      } else if (analysis.totalIn > 0 && analysis.spendingRate >= 70) {
+        alerts.push({ color: 'orange', title: 'Ritmo de gasto elevado', text: `As saídas já consumiram ${analysis.spendingRate.toFixed(0)}% das entradas.` });
       }
 
-      const payableTotal = debts
-        .filter((debt) => debt.type === 'payable' && ['pending', 'partial', 'overdue'].includes(debt.status))
-        .reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
-
-      if (payableTotal > 0) {
-        alerts.push({
-          color: 'blue',
-          title: 'Dívidas a pagar',
-          text: `Existem ${formatMoney(payableTotal, currentWorkspace.currency)} pendentes.`
-        });
+      if (analysis.avoidableTotal > 0) {
+        alerts.push({ color: 'orange', title: 'Gastos evitáveis', text: `Despesas evitáveis/impulsivas somam ${formatMoney(analysis.avoidableTotal, currency)}.` });
       }
 
-      const overdueTotal = debts
-        .filter((debt) => debt.status === 'overdue')
-        .reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
-
-      if (overdueTotal > 0) {
-        alerts.push({
-          color: 'red',
-          title: 'Dívidas vencidas',
-          text: `Existem ${formatMoney(overdueTotal, currentWorkspace.currency)} vencidos.`
-        });
+      if (analysis.topCategory[0] !== '-' && analysis.topCategoryPercent >= 35) {
+        alerts.push({ color: 'orange', title: 'Concentração numa categoria', text: `“${analysis.topCategory[0]}” representa ${analysis.topCategoryPercent.toFixed(0)}% das saídas.` });
       }
 
-      const totalLimit = budgets.reduce((sum, budget) => {
-        return sum + Number(budget.monthly_limit || 0);
-      }, 0);
-
-      if (totalLimit && totalOut > totalLimit * 0.8) {
-        alerts.push({
-          color: 'orange',
-          title: 'Orçamento quase no limite',
-          text: 'Já usou mais de 80% do orçamento mensal definido.'
-        });
+      if (analysis.payableTotal > 0) {
+        alerts.push({ color: 'blue', title: 'Dívidas a pagar', text: `Existem ${formatMoney(analysis.payableTotal, currency)} pendentes.` });
       }
 
-      if (totalIn > 0 && totalOut / totalIn > 0.7) {
-        alerts.push({
-          color: 'orange',
-          title: 'Ritmo de gasto elevado',
-          text: 'As saídas já ultrapassam 70% das entradas.'
-        });
+      if (analysis.receivableTotal > 0) {
+        alerts.push({ color: 'green', title: 'Valores a receber', text: `Existem ${formatMoney(analysis.receivableTotal, currency)} por cobrar/receber.` });
+      }
+
+      if (analysis.overdueTotal > 0) {
+        alerts.push({ color: 'red', title: 'Dívidas vencidas', text: `Existem ${formatMoney(analysis.overdueTotal, currency)} vencidos.` });
+      }
+
+      if (analysis.totalBudget > 0 && analysis.budgetUsedPercent >= 100) {
+        alerts.push({ color: 'red', title: 'Orçamento ultrapassado', text: `O orçamento foi ultrapassado (${analysis.budgetUsedPercent.toFixed(0)}%).` });
+      } else if (analysis.totalBudget > 0 && analysis.budgetUsedPercent >= 80) {
+        alerts.push({ color: 'orange', title: 'Orçamento quase no limite', text: `Já usou ${analysis.budgetUsedPercent.toFixed(0)}% do orçamento.` });
+      }
+
+      if (analysis.negativePayment) {
+        alerts.push({ color: 'orange', title: 'Forma de pagamento negativa', text: `“${analysis.negativePayment[0]}” está negativa em ${formatMoney(Math.abs(analysis.negativePayment[1].balance), currency)}.` });
       }
 
       const html = alerts.length
         ? alerts.map((alert) => `
-          <div style="margin-bottom:12px;">
+          <div class="alert-block ${alert.color}">
             <span class="badge ${alert.color}">${alert.title}</span>
             <p class="hint mt-1">${alert.text}</p>
           </div>
         `).join('')
         : '<div class="empty">Sem alertas críticos neste momento.</div>';
 
-      $('alertsBox').innerHTML = html;
+      const tipsHtml = recommendations.length
+        ? `<div class="mt-2"><h4 style="color:var(--navy);margin-bottom:8px;">Dicas práticas</h4>${recommendations.slice(0, 5).map((item) => `<div class="recommendation-item ${item.level}">${item.text}</div>`).join('')}</div>`
+        : '';
+
+      $('alertsBox').innerHTML = html + tipsHtml;
       $('reportAlerts').innerHTML = html;
+
+      if ($('notificationsLiveAlerts')) {
+        $('notificationsLiveAlerts').innerHTML = html;
+      }
     };
 
     const recalculateDebt = async (debtId) => {
@@ -2827,50 +3027,181 @@
       await loadNotifications();
     };
 
-    const drawBarChart = (canvasId, labels, values, title) => {
-      const canvas = $(canvasId);
-      if (!canvas) return;
+    const roundedRect = (ctx, x, y, width, height, radius) => {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + width, y, x + width, y + height, r);
+      ctx.arcTo(x + width, y + height, x, y + height, r);
+      ctx.arcTo(x, y + height, x, y, r);
+      ctx.arcTo(x, y, x + width, y, r);
+      ctx.closePath();
+    };
 
+    const setupCanvas = (canvas, height = 380) => {
+      const ratio = window.devicePixelRatio || 1;
+      const cssWidth = canvas.clientWidth || canvas.parentElement?.clientWidth || 900;
+      canvas.style.height = `${height}px`;
+      canvas.width = Math.round(cssWidth * ratio);
+      canvas.height = Math.round(height * ratio);
       const ctx = canvas.getContext('2d');
-      const width = canvas.width;
-      const height = canvas.height;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      return { ctx, width: cssWidth, height };
+    };
+
+    const drawNoData = (ctx, width, height, title) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#062b5f';
+      ctx.font = '800 18px Arial';
+      ctx.fillText(title, 22, 32);
+      ctx.fillStyle = '#667085';
+      ctx.font = '14px Arial';
+      ctx.fillText('Sem dados suficientes para apresentar este gráfico.', 22, 78);
+    };
+
+    const drawHorizontalBars = (ctx, width, height, labels, values, title) => {
+      const palette = ['#00b86b', '#2563eb', '#f59e0b', '#7c3aed', '#dc2626', '#0ea5e9', '#14b8a6', '#64748b'];
+      const max = Math.max(...values, 1);
+      const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+      const left = 170;
+      const right = width - 118;
+      const top = 70;
+      const rowHeight = Math.max(34, Math.min(48, (height - 110) / Math.max(labels.length, 1)));
+      const barHeight = Math.min(24, rowHeight * 0.55);
+      const plotWidth = Math.max(160, right - left);
+
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
 
       ctx.fillStyle = '#062b5f';
-      ctx.font = 'bold 22px Arial';
-      ctx.fillText(title, 22, 34);
+      ctx.font = '800 18px Arial';
+      ctx.fillText(title, 22, 32);
 
-      if (!values.length || Math.max(...values) <= 0) {
+      ctx.fillStyle = '#667085';
+      ctx.font = '12px Arial';
+      ctx.fillText('Valor', left, 55);
+      ctx.fillText('% do total', right + 10, 55);
+
+      for (let i = 0; i <= 4; i++) {
+        const x = left + (plotWidth / 4) * i;
+        ctx.strokeStyle = '#eef2f7';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, top - 10);
+        ctx.lineTo(x, height - 38);
+        ctx.stroke();
+      }
+
+      labels.forEach((label, index) => {
+        const value = Number(values[index] || 0);
+        const y = top + index * rowHeight;
+        const barWidth = Math.max(4, (value / max) * plotWidth);
+        const percent = total > 0 ? (value / total) * 100 : 0;
+
+        ctx.fillStyle = '#102033';
+        ctx.font = '700 12px Arial';
+        const cleanLabel = String(label).length > 22 ? String(label).slice(0, 22) + '…' : String(label);
+        ctx.fillText(cleanLabel, 22, y + 18);
+
+        ctx.fillStyle = '#eef2f7';
+        roundedRect(ctx, left, y + 3, plotWidth, barHeight, 10);
+        ctx.fill();
+
+        const grad = ctx.createLinearGradient(left, 0, left + barWidth, 0);
+        grad.addColorStop(0, palette[index % palette.length]);
+        grad.addColorStop(1, '#062b5f');
+        ctx.fillStyle = grad;
+        roundedRect(ctx, left, y + 3, barWidth, barHeight, 10);
+        ctx.fill();
+
+        ctx.fillStyle = '#102033';
+        ctx.font = '800 12px Arial';
+        ctx.fillText(formatMoney(value, currentWorkspace?.currency || 'MZN'), left + barWidth + 8, y + 18);
+
         ctx.fillStyle = '#667085';
-        ctx.font = '16px Arial';
-        ctx.fillText('Sem dados para apresentar.', 22, 85);
+        ctx.font = '700 12px Arial';
+        ctx.fillText(`${percent.toFixed(0)}%`, right + 10, y + 18);
+      });
+    };
+
+    const drawVerticalComparison = (ctx, width, height, labels, values, title) => {
+      const palette = ['#00b86b', '#2563eb', '#f59e0b', '#7c3aed'];
+      const max = Math.max(...values, 1);
+      const left = 60;
+      const right = width - 40;
+      const top = 70;
+      const bottom = height - 70;
+      const plotHeight = bottom - top;
+      const slot = (right - left) / Math.max(values.length, 1);
+      const barWidth = Math.min(120, slot * 0.48);
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = '#062b5f';
+      ctx.font = '800 18px Arial';
+      ctx.fillText(title, 22, 32);
+
+      for (let i = 0; i <= 4; i++) {
+        const y = bottom - (plotHeight / 4) * i;
+        ctx.strokeStyle = '#eef2f7';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Arial';
+        ctx.fillText(formatMoney((max / 4) * i, currentWorkspace?.currency || 'MZN'), 8, y + 4);
+      }
+
+      values.forEach((value, index) => {
+        const numericValue = Number(value || 0);
+        const h = Math.max(4, (numericValue / max) * plotHeight);
+        const x = left + index * slot + (slot - barWidth) / 2;
+        const y = bottom - h;
+
+        const grad = ctx.createLinearGradient(0, y, 0, bottom);
+        grad.addColorStop(0, palette[index % palette.length]);
+        grad.addColorStop(1, '#062b5f');
+        ctx.fillStyle = grad;
+        roundedRect(ctx, x, y, barWidth, h, 12);
+        ctx.fill();
+
+        ctx.fillStyle = '#102033';
+        ctx.font = '800 13px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(formatMoney(numericValue, currentWorkspace?.currency || 'MZN'), x + barWidth / 2, y - 10);
+
+        ctx.fillStyle = '#667085';
+        ctx.font = '800 13px Arial';
+        ctx.fillText(String(labels[index]), x + barWidth / 2, bottom + 24);
+        ctx.textAlign = 'left';
+      });
+    };
+
+    const drawBarChart = (canvasId, labels, values, title) => {
+      const canvas = $(canvasId);
+      if (!canvas) return;
+
+      const { ctx, width, height } = setupCanvas(canvas, labels.length > 3 ? 420 : 380);
+      const cleanValues = values.map((value) => Number(value || 0));
+
+      if (!cleanValues.length || Math.max(...cleanValues) <= 0) {
+        drawNoData(ctx, width, height, title);
         return;
       }
 
-      const max = Math.max(...values);
-      const chartTop = 60;
-      const chartBottom = height - 70;
-      const chartHeight = chartBottom - chartTop;
-      const barWidth = Math.max(28, Math.floor((width - 70) / values.length) - 14);
-
-      values.forEach((value, index) => {
-        const x = 35 + index * (barWidth + 14);
-        const h = Math.max(4, (value / max) * chartHeight);
-        const y = chartBottom - h;
-
-        ctx.fillStyle = index % 2 === 0 ? '#00b86b' : '#2563eb';
-        ctx.fillRect(x, y, barWidth, h);
-
-        ctx.fillStyle = '#102033';
-        ctx.font = '12px Arial';
-        ctx.save();
-        ctx.translate(x, chartBottom + 10);
-        ctx.rotate(-0.45);
-        ctx.fillText(String(labels[index]).slice(0, 18), 0, 0);
-        ctx.restore();
-      });
+      if (labels.length > 3) {
+        drawHorizontalBars(ctx, width, height, labels, cleanValues, title);
+      } else {
+        drawVerticalComparison(ctx, width, height, labels, cleanValues, title);
+      }
     };
 
     const drawAdvancedCharts = () => {
