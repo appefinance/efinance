@@ -2527,6 +2527,36 @@
       `;
     };
 
+
+    const getPaymentMethodNameById = (paymentMethodId) => {
+      if (!paymentMethodId) return '';
+      return paymentMethods.find((method) => method.id === paymentMethodId)?.name || '';
+    };
+
+    const getMovementPaymentMethodId = (movement) => {
+      if (!movement) return '';
+      if (movement.payment_method_id) return movement.payment_method_id;
+
+      if (movement.source_table === 'expenses') {
+        return expenses.find((expense) => expense.id === movement.source_id)?.payment_method_id || '';
+      }
+
+      if (movement.source_table === 'incomes') {
+        return incomes.find((income) => income.id === movement.source_id)?.payment_method_id || '';
+      }
+
+      if (movement.source_table === 'debt_payments') {
+        return debtPayments.find((payment) => payment.id === movement.source_id)?.payment_method_id || '';
+      }
+
+      return '';
+    };
+
+    const getMovementPaymentMethodName = (movement) => {
+      const methodId = getMovementPaymentMethodId(movement);
+      return getPaymentMethodNameById(methodId) || 'Sem forma definida';
+    };
+
     const renderPaymentBalances = () => {
       const map = {};
 
@@ -2539,11 +2569,13 @@
       });
 
       movements.forEach((movement) => {
-        const id = movement.payment_method_id || 'sem_forma';
+        const paymentMethodId = getMovementPaymentMethodId(movement);
+        const id = paymentMethodId || 'sem_forma';
+        const name = getMovementPaymentMethodName(movement);
 
         if (!map[id]) {
           map[id] = {
-            name: 'Sem forma definida',
+            name,
             in: 0,
             out: 0
           };
@@ -2591,9 +2623,7 @@
 
       const byPayment = {};
       movements.forEach((movement) => {
-        const name = movement.payment_method_id
-          ? (paymentMethods.find((method) => method.id === movement.payment_method_id)?.name || 'Forma não identificada')
-          : 'Sem forma definida';
+        const name = getMovementPaymentMethodName(movement);
 
         if (!byPayment[name]) {
           byPayment[name] = { in: 0, out: 0 };
@@ -2676,9 +2706,7 @@
 
       const byPayment = {};
       movements.forEach((movement) => {
-        const name = movement.payment_method_id
-          ? (paymentMethods.find((method) => method.id === movement.payment_method_id)?.name || 'Forma não identificada')
-          : 'Sem forma definida';
+        const name = getMovementPaymentMethodName(movement);
 
         if (!byPayment[name]) byPayment[name] = { in: 0, out: 0 };
         if (movement.direction === 'in') {
