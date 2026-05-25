@@ -992,8 +992,9 @@
 
         <div class="grid grid-2 mt-2">
           <div class="card">
-            <h3 class="section-title">Saldo por forma de pagamento</h3>
-            <div id="paymentBalanceList" class="table-wrap"></div>
+            <h3 class="section-title">Distribuição por forma de pagamento</h3>
+            <p class="hint mt-1">As entradas e saídas principais são sempre consolidadas. Aqui apenas mostramos por onde o dinheiro entrou ou saiu.</p>
+            <div id="paymentBalanceList" class="table-wrap mt-1"></div>
           </div>
 
           <div class="card">
@@ -1452,8 +1453,9 @@
             </div>
 
             <div class="card">
-              <h3 class="section-title">Resumo por forma de pagamento</h3>
-              <div id="reportPaymentSummary" class="table-wrap"></div>
+              <h3 class="section-title">Distribuição por forma de pagamento</h3>
+              <p class="hint mt-1">Este quadro é apenas informativo. O total financeiro real continua consolidado em Entradas, Saídas e Saldo.</p>
+              <div id="reportPaymentSummary" class="table-wrap mt-1"></div>
             </div>
           </div>
         </div>
@@ -1590,16 +1592,21 @@
               <div class="form-row">
                 <div>
                   <label>Nome</label>
-                  <input id="paymentName" type="text" placeholder="Ex: Conta BCI" required />
+                  <input id="paymentName" type="text" placeholder="Ex: Banco, Cash, M-Pesa, e-Mola" required />
                 </div>
 
                 <div>
                   <label>Tipo</label>
                   <select id="paymentType">
                     <option value="cash">Cash</option>
-                    <option value="mobile_money">Mobile Money</option>
                     <option value="bank">Banco</option>
+                    <option value="mobile_money">Conta móvel</option>
+                    <option value="mpesa">M-Pesa</option>
+                    <option value="emola">e-Mola</option>
                     <option value="card">Cartão</option>
+                    <option value="transfer">Transferência</option>
+                    <option value="pos">POS</option>
+                    <option value="other">Outro</option>
                   </select>
                 </div>
               </div>
@@ -1872,6 +1879,40 @@
 
       $('expenseCategory').innerHTML = expenseOptions || '<option value="">Sem categorias</option>';
       $('budgetCategory').innerHTML = expenseOptions || '<option value="">Sem categorias</option>';
+    };
+
+    const ensureDefaultPaymentMethods = async () => {
+      if (!currentWorkspace || !currentUser) return;
+
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('name')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('user_id', currentUser.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      const existingNames = new Set((data || []).map((method) => String(method.name || '').trim().toLowerCase()));
+
+      const missing = DEFAULT_PAYMENT_METHODS
+        .filter((method) => !existingNames.has(method.name.toLowerCase()))
+        .map((method) => ({
+          workspace_id: currentWorkspace.id,
+          user_id: currentUser.id,
+          name: method.name,
+          type: method.type,
+          opening_balance: 0,
+          status: 'active'
+        }));
+
+      if (missing.length) {
+        const { error: insertError } = await supabase
+          .from('payment_methods')
+          .insert(missing);
+
+        if (insertError) throw insertError;
+      }
     };
 
     const loadPaymentMethods = async () => {
@@ -2493,8 +2534,7 @@
         map[method.id] = {
           name: method.name,
           in: 0,
-          out: 0,
-          balance: 0
+          out: 0
         };
       });
 
@@ -2505,21 +2545,18 @@
           map[id] = {
             name: 'Sem forma definida',
             in: 0,
-            out: 0,
-            balance: 0
+            out: 0
           };
         }
 
         if (movement.direction === 'in') {
           map[id].in += Number(movement.amount || 0);
-          map[id].balance += Number(movement.amount || 0);
         } else {
           map[id].out += Number(movement.amount || 0);
-          map[id].balance -= Number(movement.amount || 0);
         }
       });
 
-      const rows = Object.values(map).filter((row) => row.in || row.out || row.balance);
+      const rows = Object.values(map).filter((row) => row.in || row.out);
 
       if (!rows.length) {
         $('paymentBalanceList').innerHTML = '<div class="empty">Sem movimentos por forma de pagamento.</div>';
@@ -2531,9 +2568,8 @@
           <thead>
             <tr>
               <th>Forma</th>
-              <th>Entradas</th>
-              <th>Saídas</th>
-              <th>Saldo</th>
+              <th>Entrou por aqui</th>
+              <th>Saiu por aqui</th>
             </tr>
           </thead>
           <tbody>
@@ -2542,7 +2578,6 @@
                 <td>${row.name}</td>
                 <td>${formatMoney(row.in, currentWorkspace.currency)}</td>
                 <td>${formatMoney(row.out, currentWorkspace.currency)}</td>
-                <td>${formatMoney(row.balance, currentWorkspace.currency)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -2571,7 +2606,7 @@
         }
       });
 
-      const entries = Object.entries(byPayment);
+      const entries = Object.entries(byPayment).sort((a, b) => (b[1].in + b[1].out) - (a[1].in + a[1].out));
       if (!entries.length) {
         $('reportPaymentSummary').innerHTML = '<div class="empty">Sem movimentos por forma de pagamento.</div>';
         return;
@@ -2580,7 +2615,7 @@
       $('reportPaymentSummary').innerHTML = `
         <table>
           <thead>
-            <tr><th>Forma</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr>
+            <tr><th>Forma</th><th>Entrou por aqui</th><th>Saiu por aqui</th></tr>
           </thead>
           <tbody>
             ${entries.map(([name, values]) => `
@@ -2588,7 +2623,6 @@
                 <td>${name}</td>
                 <td>${formatMoney(values.in, currentWorkspace.currency)}</td>
                 <td>${formatMoney(values.out, currentWorkspace.currency)}</td>
-                <td>${formatMoney(values.in - values.out, currentWorkspace.currency)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -2646,18 +2680,17 @@
           ? (paymentMethods.find((method) => method.id === movement.payment_method_id)?.name || 'Forma não identificada')
           : 'Sem forma definida';
 
-        if (!byPayment[name]) byPayment[name] = { in: 0, out: 0, balance: 0 };
+        if (!byPayment[name]) byPayment[name] = { in: 0, out: 0 };
         if (movement.direction === 'in') {
           byPayment[name].in += Number(movement.amount || 0);
-          byPayment[name].balance += Number(movement.amount || 0);
         } else {
           byPayment[name].out += Number(movement.amount || 0);
-          byPayment[name].balance -= Number(movement.amount || 0);
         }
       });
 
-      const paymentEntries = Object.entries(byPayment).sort((a, b) => Math.abs(b[1].balance) - Math.abs(a[1].balance));
-      const negativePayment = paymentEntries.find(([, value]) => value.balance < 0);
+      const paymentEntries = Object.entries(byPayment).sort((a, b) => (b[1].in + b[1].out) - (a[1].in + a[1].out));
+      const mainInPayment = paymentEntries.filter(([, value]) => value.in > 0).sort((a, b) => b[1].in - a[1].in)[0] || null;
+      const mainOutPayment = paymentEntries.filter(([, value]) => value.out > 0).sort((a, b) => b[1].out - a[1].out)[0] || null;
 
       return {
         totalIn,
@@ -2678,7 +2711,8 @@
         totalBudget,
         budgetUsedPercent,
         paymentEntries,
-        negativePayment
+        mainInPayment,
+        mainOutPayment
       };
     };
 
@@ -2727,8 +2761,10 @@
         recommendations.push({ level: 'warning', text: `O orçamento está em ${analysis.budgetUsedPercent.toFixed(0)}% de uso. Até fechar o mês, só aprove despesas essenciais ou previamente planeadas.` });
       }
 
-      if (analysis.negativePayment) {
-        recommendations.push({ level: 'warning', text: `A forma de pagamento “${analysis.negativePayment[0]}” está negativa em ${formatMoney(Math.abs(analysis.negativePayment[1].balance), currency)}. Verifique se faltou registar alguma entrada nessa conta/carteira.` });
+      if (analysis.mainInPayment || analysis.mainOutPayment) {
+        const inText = analysis.mainInPayment ? `principal entrada: ${analysis.mainInPayment[0]} (${formatMoney(analysis.mainInPayment[1].in, currency)})` : 'sem entradas registadas';
+        const outText = analysis.mainOutPayment ? `principal saída: ${analysis.mainOutPayment[0]} (${formatMoney(analysis.mainOutPayment[1].out, currency)})` : 'sem saídas registadas';
+        recommendations.push({ level: 'info', text: `Distribuição por canal: ${inText}; ${outText}. Os totais do app continuam consolidados, independentemente da forma de pagamento.` });
       }
 
       if (!recommendations.length) {
@@ -2884,9 +2920,6 @@
         alerts.push({ color: 'orange', title: 'Orçamento quase no limite', text: `Já usou ${analysis.budgetUsedPercent.toFixed(0)}% do orçamento.` });
       }
 
-      if (analysis.negativePayment) {
-        alerts.push({ color: 'orange', title: 'Forma de pagamento negativa', text: `“${analysis.negativePayment[0]}” está negativa em ${formatMoney(Math.abs(analysis.negativePayment[1].balance), currency)}.` });
-      }
 
       const html = alerts.length
         ? alerts.map((alert) => `
@@ -3308,6 +3341,7 @@
     const refreshAll = async () => {
       await loadBalance();
       await loadCategories();
+      await ensureDefaultPaymentMethods();
       await loadPaymentMethods();
       await loadExpenses();
       await loadIncomes();
