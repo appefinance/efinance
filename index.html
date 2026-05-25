@@ -599,6 +599,77 @@
       font-size: 15px;
     }
 
+
+    .workspace-switcher {
+      min-width: 220px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    .notif-pill {
+      position: relative;
+      min-width: 46px;
+    }
+
+    .notif-pill .dot {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--danger);
+      color: #fff;
+      font-size: 11px;
+      display: grid;
+      place-items: center;
+      padding: 0 5px;
+      font-weight: 900;
+    }
+
+    .chart-card canvas {
+      width: 100%;
+      min-height: 260px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #ffffff;
+      padding: 10px;
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .workspace-list-item,
+    .notification-item {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+
+    .notification-item.unread {
+      border-color: rgba(0,184,107,.35);
+      background: #f0fdf4;
+    }
+
+    .workspace-role {
+      display: inline-flex;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--navy);
+      background: #eef4fb;
+      border-radius: 999px;
+      padding: 5px 10px;
+    }
+
     @media (max-width: 980px) {
       .app-shell {
         grid-template-columns: 1fr;
@@ -727,12 +798,14 @@
         <button class="nav-btn" data-page="budgets">Orçamentos</button>
         <button class="nav-btn" data-page="goals">Metas</button>
         <button class="nav-btn" data-page="reports">Relatórios</button>
+        <button class="nav-btn" data-page="workspaces">Workspaces</button>
+        <button class="nav-btn" data-page="notifications">Notificações</button>
         <button class="nav-btn" data-page="settings">Definições</button>
       </div>
 
       <div class="sidebar-note">
-        <strong>EFinance V3 + V4 Online</strong><br />
-        Inclui edição, exclusão, filtros mensais, relatórios, gráficos simples e saldo por forma de pagamento.
+        <strong>EFinance V5 + V6</strong><br />
+        Relatórios avançados, exportação, notificações internas e multiutilizador simples.
       </div>
     </aside>
 
@@ -744,6 +817,8 @@
         </div>
 
         <div class="top-actions">
+          <select id="workspaceSwitcher" class="workspace-switcher"></select>
+          <button id="notificationsTopBtn" class="btn btn-secondary notif-pill" type="button">🔔<span id="notificationsCount" class="dot hidden">0</span></button>
           <button id="quickIncomeBtn" class="btn btn-secondary" type="button">+ Receita</button>
           <button id="quickExpenseBtn" class="btn btn-primary" type="button">+ Despesa</button>
           <button id="logoutBtn" class="btn btn-secondary" type="button">Sair</button>
@@ -1260,38 +1335,150 @@
       </section>
 
       <section id="reportsPage" class="page hidden">
-        <div class="grid grid-4">
-          <div class="card metric">
-            <div class="metric-title">Saldo atual</div>
-            <div id="reportBalance" class="metric-value">0,00 MT</div>
+        <div class="report-actions">
+          <button id="exportCsvBtn" class="btn btn-primary" type="button">Exportar Excel/CSV</button>
+          <button id="exportPdfBtn" class="btn btn-secondary" type="button">Exportar PDF</button>
+          <button id="saveReportBtn" class="btn btn-dark" type="button">Guardar resumo do relatório</button>
+        </div>
+
+        <div id="printReportArea">
+          <div class="grid grid-4">
+            <div class="card metric">
+              <div class="metric-title">Saldo atual</div>
+              <div id="reportBalance" class="metric-value">0,00 MT</div>
+            </div>
+
+            <div class="card metric">
+              <div class="metric-title">Maior categoria</div>
+              <div id="topCategory" class="metric-value blue">-</div>
+            </div>
+
+            <div class="card metric">
+              <div class="metric-title">Dívidas pagas</div>
+              <div id="paidDebtsReport" class="metric-value green">0,00 MT</div>
+            </div>
+
+            <div class="card metric">
+              <div class="metric-title">Valores recebidos</div>
+              <div id="receivedDebtsReport" class="metric-value purple">0,00 MT</div>
+            </div>
           </div>
 
-          <div class="card metric">
-            <div class="metric-title">Maior categoria</div>
-            <div id="topCategory" class="metric-value blue">-</div>
+          <div class="grid grid-2 mt-2">
+            <div class="card chart-card">
+              <h3 class="section-title">Gráfico avançado por categoria</h3>
+              <canvas id="categoryChart" width="900" height="330"></canvas>
+            </div>
+
+            <div class="card chart-card">
+              <h3 class="section-title">Entradas vs Saídas</h3>
+              <canvas id="cashflowChart" width="900" height="330"></canvas>
+            </div>
           </div>
 
-          <div class="card metric">
-            <div class="metric-title">Dívidas pagas</div>
-            <div id="paidDebtsReport" class="metric-value green">0,00 MT</div>
+          <div class="grid grid-2 mt-2">
+            <div class="card chart-card">
+              <h3 class="section-title">Dívidas a pagar vs valores a receber</h3>
+              <canvas id="debtChart" width="900" height="330"></canvas>
+            </div>
+
+            <div class="card">
+              <h3 class="section-title">Análise inteligente</h3>
+              <p id="smartSummary" class="hint mt-2">Sem dados suficientes.</p>
+              <div id="reportAlerts" class="mt-2"></div>
+            </div>
           </div>
 
-          <div class="card metric">
-            <div class="metric-title">Valores recebidos</div>
-            <div id="receivedDebtsReport" class="metric-value purple">0,00 MT</div>
+          <div class="grid grid-2 mt-2">
+            <div class="card">
+              <h3 class="section-title">Resumo por categoria</h3>
+              <div id="categorySummary" class="table-wrap"></div>
+            </div>
+
+            <div class="card">
+              <h3 class="section-title">Resumo por forma de pagamento</h3>
+              <div id="reportPaymentSummary" class="table-wrap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workspacesPage" class="page hidden">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="section-title">Criar novo workspace</h3>
+            <p class="hint">Use para separar finanças pessoais, família, negócio ou grupo de amigos.</p>
+            <form id="workspaceForm" class="mt-2">
+              <label>Nome do workspace</label>
+              <input id="workspaceName" type="text" placeholder="Ex: Família, Lavandaria, Amigos" required />
+
+              <label>Tipo</label>
+              <select id="workspaceType">
+                <option value="personal">Pessoal</option>
+                <option value="family">Família</option>
+                <option value="business">Negócio</option>
+                <option value="friends">Amigos</option>
+              </select>
+
+              <label>Descrição</label>
+              <textarea id="workspaceDescription" placeholder="Descrição curta"></textarea>
+
+              <button class="btn btn-primary w-100 mt-2" type="submit">Criar workspace</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Convidar amigo</h3>
+            <p class="hint">O amigo deve criar conta com o mesmo email convidado e aceitar o convite.</p>
+            <form id="inviteForm" class="mt-2">
+              <label>Email do convidado</label>
+              <input id="inviteEmail" type="email" placeholder="amigo@email.com" required />
+
+              <label>Nome opcional</label>
+              <input id="inviteName" type="text" placeholder="Nome do amigo" />
+
+              <label>Permissão</label>
+              <select id="inviteRole">
+                <option value="member">Membro</option>
+                <option value="manager">Gestor</option>
+                <option value="viewer">Visualizador</option>
+              </select>
+
+              <button class="btn btn-primary w-100 mt-2" type="submit">Criar convite</button>
+            </form>
+
+            <div id="inviteResult" class="message"></div>
           </div>
         </div>
 
         <div class="grid grid-2 mt-2">
           <div class="card">
-            <h3 class="section-title">Resumo por categoria</h3>
-            <div id="categorySummary" class="table-wrap"></div>
+            <h3 class="section-title">Meus workspaces</h3>
+            <div id="workspaceList"></div>
           </div>
 
           <div class="card">
-            <h3 class="section-title">Análise inteligente</h3>
-            <p id="smartSummary" class="hint mt-2">Sem dados suficientes.</p>
-            <div id="reportAlerts" class="mt-2"></div>
+            <h3 class="section-title">Aceitar convite</h3>
+            <p class="hint">Cole aqui o token enviado pelo dono do workspace.</p>
+            <form id="acceptInviteForm" class="mt-2">
+              <label>Token do convite</label>
+              <input id="acceptInviteToken" type="text" placeholder="Cole o token aqui" required />
+              <button class="btn btn-dark w-100 mt-2" type="submit">Aceitar convite</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="notificationsPage" class="page hidden">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="section-title">Notificações internas</h3>
+            <div id="notificationsList"></div>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Alertas atuais</h3>
+            <div id="notificationsLiveAlerts" class="empty">Sem alertas carregados.</div>
           </div>
         </div>
       </section>
@@ -1391,6 +1578,8 @@
     let expenses = [];
     let incomes = [];
     let movements = [];
+    let myWorkspaces = [];
+    let appNotifications = [];
 
     let selectedMonth = new Date().getMonth() + 1;
     let selectedYear = new Date().getFullYear();
@@ -1496,6 +1685,8 @@
         budgets: 'Orçamentos',
         goals: 'Metas',
         reports: 'Relatórios',
+        workspaces: 'Workspaces',
+        notifications: 'Notificações',
         settings: 'Definições'
       };
 
@@ -1536,21 +1727,70 @@
 
     const loadWorkspace = async () => {
       const { data, error } = await supabase
-        .from('workspaces')
+        .from('v_my_workspaces')
         .select('*')
-        .eq('owner_id', currentUser.id)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
+        .eq('user_id', currentUser.id)
+        .order('member_since', { ascending: true });
 
       if (error) throw error;
 
-      if (!data) {
-        throw new Error('Nenhum workspace encontrado. Confirme se o trigger de criação automática funcionou.');
+      myWorkspaces = data || [];
+
+      if (!myWorkspaces.length) {
+        const fallback = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('owner_id', currentUser.id)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+
+        if (fallback.error) throw fallback.error;
+        if (!fallback.data) throw new Error('Nenhum workspace encontrado. Confirme se o trigger de criação automática funcionou.');
+
+        myWorkspaces = [{
+          ...fallback.data,
+          user_id: currentUser.id,
+          role: 'owner'
+        }];
       }
 
-      currentWorkspace = data;
-      $('workspaceInfo').textContent = `${data.name} · Moeda: ${data.currency}`;
+      const previousId = currentWorkspace?.id;
+      currentWorkspace = myWorkspaces.find((workspace) => workspace.id === previousId) || myWorkspaces[0];
+
+      renderWorkspaceSwitcher();
+      renderWorkspaceList();
+      $('workspaceInfo').textContent = `${currentWorkspace.name} · Moeda: ${currentWorkspace.currency} · Perfil: ${currentWorkspace.role || 'owner'}`;
+    };
+
+    const renderWorkspaceSwitcher = () => {
+      if (!$('workspaceSwitcher')) return;
+
+      $('workspaceSwitcher').innerHTML = myWorkspaces.map((workspace) => `
+        <option value="${workspace.id}" ${workspace.id === currentWorkspace?.id ? 'selected' : ''}>
+          ${workspace.name} · ${workspace.role || 'owner'}
+        </option>
+      `).join('');
+    };
+
+    const renderWorkspaceList = () => {
+      if (!$('workspaceList')) return;
+
+      if (!myWorkspaces.length) {
+        $('workspaceList').innerHTML = '<div class="empty">Nenhum workspace encontrado.</div>';
+        return;
+      }
+
+      $('workspaceList').innerHTML = myWorkspaces.map((workspace) => `
+        <div class="workspace-list-item">
+          <strong>${workspace.name}</strong>
+          <p class="hint mt-1">${workspace.description || 'Sem descrição'} · Moeda: ${workspace.currency || 'MZN'}</p>
+          <span class="workspace-role">${workspace.role || 'owner'}</span>
+          <button class="btn btn-secondary btn-small mt-2" type="button" onclick="window.efinanceSwitchWorkspace('${workspace.id}')">
+            Abrir workspace
+          </button>
+        </div>
+      `).join('');
     };
 
     const loadCategories = async () => {
@@ -2254,6 +2494,52 @@
       `;
     };
 
+
+    const renderReportPaymentSummary = () => {
+      if (!$('reportPaymentSummary')) return;
+
+      const byPayment = {};
+      movements.forEach((movement) => {
+        const name = movement.payment_method_id
+          ? (paymentMethods.find((method) => method.id === movement.payment_method_id)?.name || 'Forma não identificada')
+          : 'Sem forma definida';
+
+        if (!byPayment[name]) {
+          byPayment[name] = { in: 0, out: 0 };
+        }
+
+        if (movement.direction === 'in') {
+          byPayment[name].in += Number(movement.amount || 0);
+        } else {
+          byPayment[name].out += Number(movement.amount || 0);
+        }
+      });
+
+      const entries = Object.entries(byPayment);
+      if (!entries.length) {
+        $('reportPaymentSummary').innerHTML = '<div class="empty">Sem movimentos por forma de pagamento.</div>';
+        return;
+      }
+
+      $('reportPaymentSummary').innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Forma</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr>
+          </thead>
+          <tbody>
+            ${entries.map(([name, values]) => `
+              <tr>
+                <td>${name}</td>
+                <td>${formatMoney(values.in, currentWorkspace.currency)}</td>
+                <td>${formatMoney(values.out, currentWorkspace.currency)}</td>
+                <td>${formatMoney(values.in - values.out, currentWorkspace.currency)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
     const renderReports = () => {
       const avoidableTotal = expenses
         .filter((expense) => ['avoidable', 'impulsive'].includes(expense.necessity_level))
@@ -2322,6 +2608,10 @@
       $('paidDebtsReport').textContent = formatMoney(paidDebts, currentWorkspace.currency);
       $('receivedDebtsReport').textContent = formatMoney(receivedDebts, currentWorkspace.currency);
 
+      if ($('reportPaymentSummary')) {
+        renderReportPaymentSummary();
+      }
+
       if (lastBalance.balance < 0) {
         $('smartSummary').textContent = 'O saldo está negativo. Reduza saídas ou registe entradas pendentes.';
       } else if (avoidableTotal > 0) {
@@ -2337,6 +2627,10 @@
       const alerts = [];
       const totalOut = Number(lastBalance.total_out || 0);
       const totalIn = Number(lastBalance.total_in || 0);
+
+      if ($('reportPaymentSummary')) {
+        renderReportPaymentSummary();
+      }
 
       if (lastBalance.balance < 0) {
         alerts.push({
@@ -2455,6 +2749,231 @@
       if (error) throw error;
     };
 
+
+    const loadNotifications = async () => {
+      const { data, error } = await supabase
+        .from('app_notifications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      if (error) {
+        console.warn('Notificações ainda não disponíveis:', error.message);
+        appNotifications = [];
+        renderNotifications();
+        return;
+      }
+
+      appNotifications = data || [];
+      renderNotifications();
+    };
+
+    const renderNotifications = () => {
+      const unread = appNotifications.filter((notification) => !notification.is_read).length;
+
+      if ($('notificationsCount')) {
+        $('notificationsCount').textContent = unread;
+        $('notificationsCount').classList.toggle('hidden', unread === 0);
+      }
+
+      const liveAlerts = $('alertsBox')?.innerHTML || '<div class="empty">Sem alertas críticos.</div>';
+      if ($('notificationsLiveAlerts')) $('notificationsLiveAlerts').innerHTML = liveAlerts;
+
+      if (!$('notificationsList')) return;
+
+      if (!appNotifications.length) {
+        $('notificationsList').innerHTML = '<div class="empty">Ainda não existem notificações guardadas.</div>';
+        return;
+      }
+
+      $('notificationsList').innerHTML = appNotifications.map((notification) => `
+        <div class="notification-item ${notification.is_read ? '' : 'unread'}">
+          <span class="badge ${notification.severity === 'danger' ? 'red' : notification.severity === 'warning' ? 'orange' : 'blue'}">${notification.type}</span>
+          <h4 class="mt-1">${notification.title}</h4>
+          <p class="hint mt-1">${notification.message}</p>
+          <small class="hint">${new Date(notification.created_at).toLocaleString('pt-MZ')}</small>
+          ${notification.is_read ? '' : `<button class="btn btn-secondary btn-small mt-2" type="button" onclick="window.efinanceMarkNotificationRead('${notification.id}')">Marcar como lida</button>`}
+        </div>
+      `).join('');
+    };
+
+    const markNotificationRead = async (id) => {
+      const { error } = await supabase
+        .from('app_notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      await loadNotifications();
+    };
+
+    const createNotification = async (title, message, severity = 'info') => {
+      if (!currentWorkspace || !currentUser) return;
+
+      await supabase.from('app_notifications').insert({
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        type: 'system',
+        title,
+        message,
+        severity
+      });
+
+      await loadNotifications();
+    };
+
+    const drawBarChart = (canvasId, labels, values, title) => {
+      const canvas = $(canvasId);
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = '#062b5f';
+      ctx.font = 'bold 22px Arial';
+      ctx.fillText(title, 22, 34);
+
+      if (!values.length || Math.max(...values) <= 0) {
+        ctx.fillStyle = '#667085';
+        ctx.font = '16px Arial';
+        ctx.fillText('Sem dados para apresentar.', 22, 85);
+        return;
+      }
+
+      const max = Math.max(...values);
+      const chartTop = 60;
+      const chartBottom = height - 70;
+      const chartHeight = chartBottom - chartTop;
+      const barWidth = Math.max(28, Math.floor((width - 70) / values.length) - 14);
+
+      values.forEach((value, index) => {
+        const x = 35 + index * (barWidth + 14);
+        const h = Math.max(4, (value / max) * chartHeight);
+        const y = chartBottom - h;
+
+        ctx.fillStyle = index % 2 === 0 ? '#00b86b' : '#2563eb';
+        ctx.fillRect(x, y, barWidth, h);
+
+        ctx.fillStyle = '#102033';
+        ctx.font = '12px Arial';
+        ctx.save();
+        ctx.translate(x, chartBottom + 10);
+        ctx.rotate(-0.45);
+        ctx.fillText(String(labels[index]).slice(0, 18), 0, 0);
+        ctx.restore();
+      });
+    };
+
+    const drawAdvancedCharts = () => {
+      const byCategory = {};
+      expenses.forEach((expense) => {
+        const name = expense.categories?.name || 'Sem categoria';
+        byCategory[name] = (byCategory[name] || 0) + Number(expense.amount || 0);
+      });
+
+      const categoryEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      drawBarChart('categoryChart', categoryEntries.map(([name]) => name), categoryEntries.map(([, value]) => value), 'Despesas por categoria');
+
+      drawBarChart('cashflowChart', ['Entradas', 'Saídas'], [Number(lastBalance.total_in || 0), Number(lastBalance.total_out || 0)], 'Entradas vs Saídas');
+
+      const payable = debts.filter((debt) => debt.type === 'payable' && ['pending', 'partial', 'overdue'].includes(debt.status)).reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+      const receivable = debts.filter((debt) => debt.type === 'receivable' && ['pending', 'partial', 'overdue'].includes(debt.status)).reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+      drawBarChart('debtChart', ['A pagar', 'A receber'], [payable, receivable], 'Dívidas e valores a receber');
+    };
+
+    const exportCsv = () => {
+      const rows = [
+        ['Data', 'Tipo', 'Descrição', 'Direção', 'Valor', 'Moeda'],
+        ...movements.map((movement) => [
+          movement.movement_date || '',
+          movement.movement_type || '',
+          (movement.description || '').replaceAll(';', ','),
+          movement.direction === 'in' ? 'Entrada' : 'Saída',
+          movement.amount || 0,
+          movement.currency || currentWorkspace.currency
+        ])
+      ];
+
+      const csv = rows.map((row) => row.join(';')).join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `efinance_${currentWorkspace.name}_${selectedYear}_${selectedMonth}.csv`.replaceAll(' ', '_');
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    const exportPdf = () => {
+      const originalTitle = document.title;
+      document.title = `EFinance - Relatório ${currentWorkspace.name}`;
+      window.print();
+      document.title = originalTitle;
+    };
+
+    const saveReportSnapshot = async () => {
+      const period = getPeriod();
+      const avoidableTotal = expenses
+        .filter((expense) => ['avoidable', 'impulsive'].includes(expense.necessity_level))
+        .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+      const payable = debts.filter((debt) => debt.type === 'payable').reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+      const receivable = debts.filter((debt) => debt.type === 'receivable').reduce((sum, debt) => sum + Number(debt.pending_amount || 0), 0);
+
+      const { error } = await supabase.from('report_snapshots').insert({
+        workspace_id: currentWorkspace.id,
+        user_id: currentUser.id,
+        report_type: filterPreset === 'all' ? 'all' : 'monthly',
+        period_start: period.start,
+        period_end: period.end,
+        total_in: lastBalance.total_in,
+        total_out: lastBalance.total_out,
+        balance: lastBalance.balance,
+        total_expenses: expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0),
+        total_incomes: incomes.reduce((sum, income) => sum + Number(income.amount || 0), 0),
+        total_debts_payable: payable,
+        total_debts_receivable: receivable,
+        total_avoidable: avoidableTotal,
+        summary: $('smartSummary')?.textContent || '',
+        data: {
+          movements,
+          expenses,
+          incomes,
+          debts
+        }
+      });
+
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      showMessage('globalMessage', 'Relatório guardado com sucesso.', 'ok');
+    };
+
+    const switchWorkspaceById = async (workspaceId) => {
+      const workspace = myWorkspaces.find((item) => item.id === workspaceId);
+      if (!workspace) return;
+
+      currentWorkspace = workspace;
+      renderWorkspaceSwitcher();
+      $('workspaceInfo').textContent = `${currentWorkspace.name} · Moeda: ${currentWorkspace.currency} · Perfil: ${currentWorkspace.role || 'owner'}`;
+      await refreshAll();
+      switchPage('dashboard');
+    };
+
+    window.efinanceSwitchWorkspace = switchWorkspaceById;
+    window.efinanceMarkNotificationRead = markNotificationRead;
+
     const refreshAll = async () => {
       await loadBalance();
       await loadCategories();
@@ -2466,9 +2985,11 @@
       await loadBudgets();
       await loadGoals();
       await loadMovements();
+      await loadNotifications();
 
       renderReports();
       renderAlerts();
+      drawAdvancedCharts();
     };
 
     const bootApp = async () => {
@@ -2994,6 +3515,103 @@
     $('goDebt').addEventListener('click', () => switchPage('debts'));
     $('quickIncomeBtn').addEventListener('click', () => switchPage('movements'));
     $('quickExpenseBtn').addEventListener('click', () => switchPage('movements'));
+    $('notificationsTopBtn').addEventListener('click', () => switchPage('notifications'));
+
+    $('workspaceSwitcher').addEventListener('change', async () => {
+      await switchWorkspaceById($('workspaceSwitcher').value);
+    });
+
+    $('exportCsvBtn').addEventListener('click', exportCsv);
+    $('exportPdfBtn').addEventListener('click', exportPdf);
+    $('saveReportBtn').addEventListener('click', saveReportSnapshot);
+
+    $('workspaceForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const name = $('workspaceName').value.trim();
+      if (!name) return;
+
+      const { data, error } = await supabase
+        .from('workspaces')
+        .insert({
+          owner_id: currentUser.id,
+          name,
+          type: $('workspaceType').value,
+          currency: currentWorkspace?.currency || 'MZN',
+          description: $('workspaceDescription').value.trim(),
+          is_shared: true,
+          status: 'active'
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      const member = await supabase.from('workspace_members').insert({
+        workspace_id: data.id,
+        user_id: currentUser.id,
+        role: 'owner',
+        status: 'active'
+      });
+
+      if (member.error) {
+        showMessage('globalMessage', member.error.message, 'error');
+        return;
+      }
+
+      event.target.reset();
+      await loadWorkspace();
+      await switchWorkspaceById(data.id);
+      await createNotification('Workspace criado', `O workspace ${name} foi criado.`, 'info');
+      showMessage('globalMessage', 'Workspace criado com sucesso.', 'ok');
+    });
+
+    $('inviteForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const { data, error } = await supabase
+        .from('workspace_invites')
+        .insert({
+          workspace_id: currentWorkspace.id,
+          invited_by: currentUser.id,
+          invited_email: $('inviteEmail').value.trim(),
+          invited_name: $('inviteName').value.trim(),
+          role: $('inviteRole').value,
+          status: 'pending'
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      $('inviteResult').className = 'message ok';
+      $('inviteResult').innerHTML = `Convite criado. Envie este token ao convidado:<br><strong>${data.token}</strong>`;
+      event.target.reset();
+    });
+
+    $('acceptInviteForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const { error } = await supabase.rpc('accept_workspace_invite', {
+        p_token: $('acceptInviteToken').value.trim()
+      });
+
+      if (error) {
+        showMessage('globalMessage', error.message, 'error');
+        return;
+      }
+
+      event.target.reset();
+      await loadWorkspace();
+      await refreshAll();
+      showMessage('globalMessage', 'Convite aceite com sucesso.', 'ok');
+    });
 
     $('applyFilterBtn').addEventListener('click', async () => {
       selectedMonth = Number($('filterMonth').value);
