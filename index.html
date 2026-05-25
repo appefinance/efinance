@@ -1084,6 +1084,71 @@
           </div>
         </div>
 
+        <div class="card mt-2">
+          <h3 class="section-title">Editar dívida / valor a receber selecionado</h3>
+          <p class="hint">Selecione primeiro a dívida ou o valor a receber. Depois altere os campos necessários e grave.</p>
+
+          <form id="debtEditForm" class="mt-2">
+            <label>Selecionar dívida / valor a receber</label>
+            <select id="debtEditSelect"></select>
+
+            <div class="form-row">
+              <div>
+                <label>Tipo</label>
+                <select id="debtEditType">
+                  <option value="payable">Dívida a pagar</option>
+                  <option value="receivable">Valor a receber</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Pessoa / empresa</label>
+                <input id="debtEditPerson" type="text" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label>Valor total</label>
+                <input id="debtEditAmount" type="number" step="0.01" min="0" required />
+              </div>
+
+              <div>
+                <label>Vencimento</label>
+                <input id="debtEditDueDate" type="date" />
+              </div>
+            </div>
+
+            <label>Descrição</label>
+            <textarea id="debtEditDescription" placeholder="Atualize os detalhes da dívida ou valor a receber"></textarea>
+
+            <div class="form-row">
+              <div>
+                <label>Afeta saldo ao pagar/receber?</label>
+                <select id="debtEditAffectsBalance">
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
+                </select>
+              </div>
+              <div>
+                <label>Estado</label>
+                <select id="debtEditStatus">
+                  <option value="pending">Pendente</option>
+                  <option value="partial">Parcial</option>
+                  <option value="paid">Pago</option>
+                  <option value="overdue">Vencido</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row mt-2">
+              <button class="btn btn-primary w-100" type="submit">Atualizar dívida selecionada</button>
+              <button id="clearDebtEditBtn" class="btn btn-secondary w-100" type="button">Limpar seleção</button>
+            </div>
+          </form>
+        </div>
+
         <div class="grid grid-2 mt-2">
           <div class="card">
             <h3 class="section-title">Minhas dívidas a pagar</h3>
@@ -1873,6 +1938,18 @@
           </option>
         `;
       }).join('') || '<option value="">Sem dívidas pendentes</option>';
+
+      if ($('debtEditSelect')) {
+        const currentSelection = $('debtEditSelect').value;
+        $('debtEditSelect').innerHTML = '<option value="">Selecione uma dívida ou valor a receber</option>' + debts.map((debt) => {
+          const label = debt.type === 'payable' ? 'A pagar' : 'A receber';
+          return `<option value="${debt.id}">${label}: ${debt.person_name} · ${formatMoney(debt.pending_amount, debt.currency)} pendente</option>`;
+        }).join('');
+
+        if (currentSelection && debts.some((debt) => debt.id === currentSelection)) {
+          $('debtEditSelect').value = currentSelection;
+        }
+      }
 
       const payableRows = debts.filter((debt) => debt.type === 'payable');
       const receivableRows = debts.filter((debt) => debt.type === 'receivable');
@@ -2681,24 +2758,38 @@
       }
     };
 
-    window.editDebt = async (id) => {
+    const fillDebtEditForm = (id) => {
       const debt = debts.find((item) => item.id === id);
       if (!debt) return;
 
-      const person = prompt('Pessoa/empresa:', debt.person_name) || debt.person_name;
-      const total = Number(prompt('Valor total:', debt.total_amount));
-      if (!total) return;
+      $('debtEditSelect').value = debt.id;
+      $('debtEditType').value = debt.type;
+      $('debtEditPerson').value = debt.person_name || '';
+      $('debtEditAmount').value = Number(debt.total_amount || 0);
+      $('debtEditDueDate').value = debt.due_date || '';
+      $('debtEditDescription').value = debt.description || '';
+      $('debtEditAffectsBalance').value = debt.affects_balance === false ? 'false' : 'true';
+      $('debtEditStatus').value = debt.status || 'pending';
 
-      const { error } = await supabase
-        .from('debts')
-        .update({ person_name: person, total_amount: total })
-        .eq('id', id);
+      showMessage('globalMessage', 'Dívida selecionada para edição.', 'ok');
+    };
 
-      if (error) return showMessage('globalMessage', error.message, 'error');
+    const clearDebtEditForm = () => {
+      if ($('debtEditForm')) {
+        $('debtEditForm').reset();
+      }
+      if ($('debtEditSelect')) {
+        $('debtEditSelect').value = '';
+      }
+    };
 
-      await recalculateDebt(id);
-      showMessage('globalMessage', 'Dívida atualizada.', 'ok');
-      await refreshAll();
+    window.editDebt = async (id) => {
+      switchPage('debts');
+      fillDebtEditForm(id);
+      const form = $('debtEditForm');
+      if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     };
 
     window.deleteDebt = async (id) => {
@@ -3036,6 +3127,59 @@
         await refreshAll();
       } catch (error) {
         showMessage('globalMessage', error.message, 'error');
+      }
+    });
+
+    $('debtEditSelect').addEventListener('change', () => {
+      const selectedId = $('debtEditSelect').value;
+      if (selectedId) {
+        fillDebtEditForm(selectedId);
+      }
+    });
+
+    $('clearDebtEditBtn').addEventListener('click', () => {
+      clearDebtEditForm();
+      showMessage('globalMessage', 'Seleção de edição limpa.', 'ok');
+    });
+
+    $('debtEditForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const debtId = $('debtEditSelect').value;
+      if (!debtId) {
+        showMessage('globalMessage', 'Selecione primeiro uma dívida para editar.', 'error');
+        return;
+      }
+
+      const payload = {
+        type: $('debtEditType').value,
+        person_name: $('debtEditPerson').value.trim(),
+        total_amount: Number($('debtEditAmount').value || 0),
+        due_date: $('debtEditDueDate').value || null,
+        description: $('debtEditDescription').value.trim(),
+        affects_balance: $('debtEditAffectsBalance').value === 'true',
+        status: $('debtEditStatus').value
+      };
+
+      const releaseButton = setButtonBusy(event.submitter, 'A atualizar...');
+
+      try {
+        const { error } = await supabase
+          .from('debts')
+          .update(payload)
+          .eq('id', debtId);
+
+        if (error) throw error;
+
+        await recalculateDebt(debtId);
+        showMessage('globalMessage', 'Dívida atualizada com sucesso.', 'ok');
+        await refreshAll();
+        $('debtEditSelect').value = debtId;
+        fillDebtEditForm(debtId);
+      } catch (error) {
+        showMessage('globalMessage', error.message, 'error');
+      } finally {
+        releaseButton();
       }
     });
 
