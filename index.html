@@ -3338,23 +3338,86 @@
     window.efinanceSwitchWorkspace = switchWorkspaceById;
     window.efinanceMarkNotificationRead = markNotificationRead;
 
-    const refreshAll = async () => {
-      await loadBalance();
-      await loadCategories();
-      await ensureDefaultPaymentMethods();
-      await loadPaymentMethods();
-      await loadExpenses();
-      await loadIncomes();
-      await loadDebts();
-      await loadDebtPayments();
-      await loadBudgets();
-      await loadGoals();
-      await loadMovements();
-      await loadNotifications();
+    const timeoutPromise = (label, milliseconds = 12000) => {
+      return new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} demorou mais do que o previsto.`)), milliseconds);
+      });
+    };
 
+    const runTask = async (label, task, milliseconds = 12000) => {
+      try {
+        await Promise.race([
+          task(),
+          timeoutPromise(label, milliseconds)
+        ]);
+        return { label, ok: true };
+      } catch (error) {
+        console.warn(`EFinance: ${label}`, error);
+        return { label, ok: false, error };
+      }
+    };
+
+    const renderAfterData = () => {
       renderReports();
       renderAlerts();
       drawAdvancedCharts();
+    };
+
+    const refreshQuick = async () => {
+      if ($('alertsBox')) {
+        $('alertsBox').innerHTML = '<div class="empty">A carregar leitura rápida da conta...</div>';
+      }
+
+      await Promise.allSettled([
+        runTask('saldo consolidado', loadBalance, 8000),
+        runTask('últimos movimentos', loadMovements, 8000),
+        runTask('dívidas', loadDebts, 8000)
+      ]);
+
+      renderAfterData();
+
+      setTimeout(() => {
+        refreshDeep(false);
+      }, 150);
+    };
+
+    const refreshDeep = async (showFinalMessage = true) => {
+      if ($('alertsBox')) {
+        $('alertsBox').innerHTML = '<div class="empty">A fazer varredura completa da conta em segundo plano...</div>';
+      }
+
+      const tasks = [
+        runTask('categorias', loadCategories, 12000),
+        runTask('formas de pagamento padrão', ensureDefaultPaymentMethods, 12000),
+        runTask('formas de pagamento', loadPaymentMethods, 12000),
+        runTask('despesas', loadExpenses, 14000),
+        runTask('receitas', loadIncomes, 14000),
+        runTask('pagamentos de dívidas', loadDebtPayments, 14000),
+        runTask('orçamentos', loadBudgets, 12000),
+        runTask('metas', loadGoals, 12000),
+        runTask('notificações', loadNotifications, 12000)
+      ];
+
+      const results = await Promise.allSettled(tasks);
+      renderAfterData();
+
+      const failed = results
+        .map((result) => result.value)
+        .filter((result) => result && !result.ok);
+
+      if (failed.length && showFinalMessage) {
+        showMessage('globalMessage', `Algumas áreas demoraram a responder: ${failed.map((item) => item.label).join(', ')}. O app continuará a funcionar com os dados já carregados.`, 'error');
+      }
+    };
+
+    const refreshAll = async (mode = 'quick') => {
+      if (mode === 'full') {
+        await refreshQuick();
+        await refreshDeep(true);
+        return;
+      }
+
+      await refreshQuick();
     };
 
     const bootApp = async () => {
